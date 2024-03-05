@@ -1678,7 +1678,8 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
     const int result = attr_comparator(left_user_key, right_user_key);
     if (result > 0 ||  // left < right
                        // left == right but is (left,right)/[left,right) or (left,right]
-        (result == 0 && (left_inclusive == false || right_inclusive == false))) {
+        (result == 0 && (left_inclusive == false || right_inclusive == false)) ||  (result == -1))
+       {
       return RC::INVALID_ARGUMENT;
     }
   }
@@ -1790,6 +1791,7 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
   }
 
   return RC::SUCCESS;
+
 }
 
 void BplusTreeScanner::fetch_item(RID &rid)

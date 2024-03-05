@@ -18,8 +18,8 @@ See the Mulan PSL v2 for more details. */
 #include "common/log/log.h"
 #include "common/lang/comparator.h"
 #include "common/lang/string.h"
-
-const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "floats", "booleans"};
+#include <regex>
+const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "dates", "floats", "booleans",};
 
 const char *attr_type_to_string(AttrType type)
 {
@@ -55,7 +55,50 @@ Value::Value(bool val)
 
 Value::Value(const char *s, int len /*= 0*/)
 {
-  set_string(s, len);
+  // check whether s is a date
+  // if s is a date, initialize as a date value
+  std::string str(s);
+  if(check_date(str)){
+    std::regex date_pattern(R"(^(\d{4})-(\d{1,2})-(\d{1,2})$)");
+    std::smatch matches;
+    std::regex_match(str, matches, date_pattern);
+
+    int year = std::stoi(matches[1].str());
+    int month = std::stoi(matches[2].str());
+    int day = std::stoi(matches[3].str());
+
+        // Convert the date to an integer format YYYYMMDD
+    int date_as_int = year * 10000 + month * 100 + day;
+    
+     set_date(date_as_int);
+  }
+    
+  else
+  // else initialize as a string
+   set_string(s, len);
+}
+
+static bool is_valid_date(int y, int m, int d) {
+    static int mon[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    bool leap = (y % 400 == 0) || (y % 100 != 0 && y % 4 == 0);
+    return y > 0
+        && m > 0 && m <= 12
+        && d > 0 && d <= (m == 2 && leap ? 29 : mon[m]);
+}
+
+// Function to check if a string is a valid date in YYYY-MM-DD format
+bool Value::check_date(const std::string& date_str) {
+    std::regex date_pattern(R"(^(\d{4})-(\d{1,2})-(\d{1,2})$)");
+    std::smatch matches;
+
+    if (std::regex_match(date_str, matches, date_pattern)) {
+        int year = std::stoi(matches[1].str());
+        int month = std::stoi(matches[2].str());
+        int day = std::stoi(matches[3].str());
+
+        return is_valid_date(year, month, day);
+    }
+    return false;
 }
 
 void Value::set_data(char *data, int length)
@@ -75,7 +118,11 @@ void Value::set_data(char *data, int length)
     case BOOLEANS: {
       num_value_.bool_value_ = *(int *)data != 0;
       length_ = length;
-    } break;
+    }break;
+    case DATES: {
+      num_value_.date_value_ = *(int *)data;
+      length_ = length;
+    }
     default: {
       LOG_WARN("unknown data type: %d", attr_type_);
     } break;
@@ -110,6 +157,12 @@ void Value::set_string(const char *s, int len /*= 0*/)
     str_value_.assign(s);
   }
   length_ = str_value_.length();
+}
+
+void Value::set_date(int val){
+  attr_type_ = DATES;
+  num_value_.date_value_ = val;
+  length_ = sizeof(val);
 }
 
 void Value::set_value(const Value &value)
@@ -161,6 +214,15 @@ std::string Value::to_string() const
     case CHARS: {
       os << str_value_;
     } break;
+    case DATES: {
+    std::string date_str = std::to_string(num_value_.date_value_);
+    if (date_str.length() == 8) { // Ensure the date string is the expected length
+    // Insert dashes to format the date as YYYY-MM-DD
+    date_str.insert(4, "-");
+    date_str.insert(7, "-");
+  }
+    os << date_str;
+    }
     default: {
       LOG_WARN("unsupported attr type: %d", attr_type_);
     } break;
@@ -183,6 +245,9 @@ int Value::compare(const Value &other) const
             this->str_value_.length(),
             (void *)other.str_value_.c_str(),
             other.str_value_.length());
+      } break;
+      case DATES: {
+        return common::compare_int((void *)&this->num_value_.date_value_, (void *)&other.num_value_.date_value_);
       } break;
       case BOOLEANS: {
         return common::compare_int((void *)&this->num_value_.bool_value_, (void *)&other.num_value_.bool_value_);

@@ -28,7 +28,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/parser/parse_defs.h"
 #include "common/lang/comparator.h"
 #include "common/log/log.h"
-
+#include <regex>
 /**
  * @brief B+树的实现
  * @defgroup BPlusTree
@@ -74,6 +74,17 @@ public:
       }
       case CHARS: {
         return common::compare_string((void *)v1, attr_length_, (void *)v2, attr_length_);
+      }
+      case DATES: {
+        std::string str(v2);
+        std::regex date_pattern(R"(^(\d{4})-(\d{1,2})-(\d{1,2})$)");
+        std::smatch matches;
+
+    if (std::regex_match(str, matches, date_pattern)) {
+        return -1;
+    }else{
+        return common::compare_int((void *)v1, (void *)v2);
+    }
       }
       default: {
         ASSERT(false, "unknown attr type. %d", attr_type_);
