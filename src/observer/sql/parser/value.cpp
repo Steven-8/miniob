@@ -19,7 +19,28 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/comparator.h"
 #include "common/lang/string.h"
 #include <regex>
+
 const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "dates", "floats", "booleans",};
+
+static float stringToNumber(const std::string& str) {
+    try {
+        // Use std::stod to convert the string to a double
+        return std::stof(str);
+    } catch (const std::invalid_argument& ia) {
+        // If the conversion fails because the string does not contain a valid floating-point number
+        // (or if no conversion could be performed)
+    } catch (const std::out_of_range& oor) {
+        // If the converted value would fall out of the range of representable values by a double
+    }
+    // Return 0.0 if parsing fails or if the string contains invalid characters
+    return 0.0;
+}
+
+template <typename T>
+std::string numberToString(T number) {
+  T absNumber = std::abs(number); // Remove sign as per requirement
+  return std::to_string(absNumber);
+}
 
 const char *attr_type_to_string(AttrType type)
 {
@@ -263,6 +284,31 @@ int Value::compare(const Value &other) const
     float other_data = other.num_value_.int_value_;
     return common::compare_float((void *)&this->num_value_.float_value_, (void *)&other_data);
   }
+else if (this->attr_type_ == CHARS && other.attr_type_ == INTS) {
+    // Convert CHARS (string) to a double for comparison with an INT
+    float this_data_double = stringToNumber(this->str_value_);
+    // Since we're comparing with an INT, consider casting to int if exact matching is required
+    int this_data_int = static_cast<int>(this_data_double);
+    // Direct comparison of this int and other int
+    return common::compare_int((void *)&this_data_int, (void *)&other.num_value_.int_value_);
+} else if (this->attr_type_ == CHARS && other.attr_type_ == FLOATS) {
+    // Convert CHARS (string) to a double for comparison with a FLOAT
+    float this_data_double = stringToNumber(this->str_value_);
+    // Direct comparison of this double and other float
+    // Note: Converting other's float to double for precise comparison
+    return common::compare_float((void *)&this_data_double, (void *)&other.num_value_.float_value_);
+}
+  else if (this->attr_type_ == INTS && other.attr_type_ == CHARS) {
+    // Other direction: Convert other's string to float and compare with this int
+    float other_data = stringToNumber(other.str_value_);
+    float this_data = static_cast<float>(this->num_value_.int_value_); // Convert int to float for direct comparison
+    return common::compare_float((void *)&this_data, (void *)&other_data);
+} else if (this->attr_type_ == FLOATS && other.attr_type_ == CHARS) {
+    // Convert other's string to float for comparison with this float
+    float other_data = stringToNumber(other.str_value_);
+    return common::compare_float((void *)&this->num_value_.float_value_, (void *)&other_data);
+}
+
   LOG_WARN("not supported");
   return -1;  // TODO return rc?
 }
