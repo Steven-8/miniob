@@ -45,6 +45,7 @@ See the Mulan PSL v2 for more details. */
   DEFINE_RC(SCHEMA_TABLE_NOT_EXIST)         \
   DEFINE_RC(SCHEMA_TABLE_EXIST)             \
   DEFINE_RC(SCHEMA_FIELD_NOT_EXIST)         \
+  DEFINE_RC(SCHEMA_FIELD_NOT_NULLABLE)      \
   DEFINE_RC(SCHEMA_FIELD_MISSING)           \
   DEFINE_RC(SCHEMA_FIELD_TYPE_MISMATCH)     \
   DEFINE_RC(SCHEMA_INDEX_NAME_REPEAT)       \
@@ -73,7 +74,8 @@ See the Mulan PSL v2 for more details. */
   DEFINE_RC(FILE_WRITE)                     \
   DEFINE_RC(VARIABLE_NOT_EXISTS)            \
   DEFINE_RC(VARIABLE_NOT_VALID)             \
-  DEFINE_RC(LOGBUF_FULL)
+  DEFINE_RC(LOGBUF_FULL)                    \
+  DEFINE_RC(GENERIC_ERROR)
 
 enum class RC
 {

@@ -78,6 +78,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         STRING_T
         FLOAT_T
         DATE_T
+        NOT_NULL
+        NULLABLE
         HELP
         EXIT
         DOT //QUOTE
@@ -124,6 +126,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %token <string> ID
 %token <string> SSS
 %token <string> DATE_STR
+%token NULL_T
 //非终结符
 
 /** type 定义了各种解析后的结果输出的是什么类型。类型对应了 union 中的定义的成员变量名称 **/
@@ -318,20 +321,60 @@ attr_def_list:
     ;
     
 attr_def:
+     ID type LBRACE number RBRACE NOT_NULL
+    {
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1;
+      $$->length = $4;
+      $$->nullable = false; // NOT NULL constraint
+      free($1);
+    }
+    |
+    ID type LBRACE number RBRACE NULLABLE
+    {
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1;
+      $$->length = $4;
+      $$->nullable = true;
+      free($1);
+    }
+    |
     ID type LBRACE number RBRACE 
     {
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
       $$->name = $1;
       $$->length = $4;
+      $$->nullable = false;
+      free($1);
+    }
+    | ID type NOT_NULL 
+    {
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1;
+      $$->length = 4; // Assuming a default length if not specified
+      $$->nullable = false; // NOT NULL constraint
+      free($1);
+    }
+    | ID type NULLABLE 
+    {
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1; 
+      $$->length = 4;
+      $$->nullable = true;
       free($1);
     }
     | ID type
     {
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
-      $$->name = $1;
-      $$->length = 4;
+      $$->name = $1; 
+      $$->length = 4; 
+      $$->nullable = false; 
       free($1);
     }
     ;
@@ -391,6 +434,9 @@ value:
       char *tmp = common::substr($1,1,strlen($1)-2);
       $$ = new Value(tmp);
       free(tmp);
+    }
+    | NULL_T {
+       $$ = new Value();
     }
     ;
     

@@ -20,7 +20,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/string.h"
 #include <regex>
 
-const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "dates", "floats", "booleans",};
+const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "dates", "floats", "null","booleans",};
 
 static float stringToNumber(const std::string& str) {
     try {
@@ -58,7 +58,6 @@ AttrType attr_type_from_string(const char *s)
   }
   return UNDEFINED;
 }
-
 Value::Value(int val)
 {
   set_int(val);
@@ -72,6 +71,10 @@ Value::Value(float val)
 Value::Value(bool val)
 {
   set_boolean(val);
+}
+
+Value::Value(){
+  set_null();
 }
 
 Value::Value(const char *s, int len /*= 0*/)
@@ -144,13 +147,17 @@ void Value::set_data(char *data, int length)
       num_value_.date_value_ = *(int *)data;
       length_ = length;
     }
+    case NULLTYPE: {
+      num_value_.null_value_ = *(int *)data;
+      length_ = length;
+    }
     default: {
       LOG_WARN("unknown data type: %d", attr_type_);
     } break;
   }
 }
 void Value::set_int(int val)
-{
+{ 
   attr_type_ = INTS;
   num_value_.int_value_ = val;
   length_ = sizeof(val);
@@ -184,6 +191,12 @@ void Value::set_date(int val){
   attr_type_ = DATES;
   num_value_.date_value_ = val;
   length_ = sizeof(val);
+}
+
+void Value::set_null(){
+  attr_type_ = NULLTYPE;
+  num_value_.null_value_ = 0;
+  is_null_ = true;
 }
 
 void Value::set_value(const Value &value)
@@ -241,9 +254,12 @@ std::string Value::to_string() const
     // Insert dashes to format the date as YYYY-MM-DD
     date_str.insert(4, "-");
     date_str.insert(7, "-");
-  }
-    os << date_str;
     }
+    os << date_str;
+    }break;
+    case NULLTYPE: {
+      return "NULL";
+    }break;
     default: {
       LOG_WARN("unsupported attr type: %d", attr_type_);
     } break;
@@ -253,6 +269,9 @@ std::string Value::to_string() const
 
 int Value::compare(const Value &other) const
 {
+  if(this->attr_type_ == NULLTYPE || other.attr_type_ == NULLTYPE){
+    return false;
+  }
   if (this->attr_type_ == other.attr_type_) {
     switch (this->attr_type_) {
       case INTS: {

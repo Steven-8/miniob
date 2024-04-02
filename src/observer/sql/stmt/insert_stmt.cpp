@@ -55,9 +55,15 @@ RC InsertStmt::create(Db *db,  InsertSqlNode &inserts, Stmt *&stmt)
     const AttrType field_type = field_meta->type();
     const AttrType value_type = values[i].attr_type();
     if (field_type != value_type) {  // TODO try to convert the value type to field type
-      if (field_type != value_type) {
-        // Attempt to convert the value type to match the field type
-        if (field_type == INTS && value_type == CHARS) {
+        if(value_type == NULLTYPE){
+          if(!field_meta->is_nullable()){
+            LOG_WARN("NULL value for non-nullable field. table=%s, field=%s",
+               table_name, field_meta->name());
+               return RC::SCHEMA_FIELD_NOT_NULLABLE;
+          }
+          values[i].set_null();
+        }
+          else if (field_type == INTS && value_type == CHARS) {
             // Convert string to int
             std::istringstream iss(values[i].get_string());
             int num;
@@ -104,7 +110,6 @@ RC InsertStmt::create(Db *db,  InsertSqlNode &inserts, Stmt *&stmt)
                 table_name, field_meta->name(), field_type, value_type);
             return RC::SCHEMA_FIELD_TYPE_MISMATCH;
         }
-      }
     }
   }
 

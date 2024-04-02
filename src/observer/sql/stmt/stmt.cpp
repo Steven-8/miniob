@@ -29,7 +29,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/set_variable_stmt.h"
 #include "sql/stmt/load_data_stmt.h"
 #include "sql/stmt/calc_stmt.h"
-
+#include "storage/default/default_handler.h"
 RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
 {
   stmt = nullptr;
@@ -63,6 +63,20 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
 
     case SCF_HELP: {
       return HelpStmt::create(stmt);
+    }
+
+    case SCF_DROP_TABLE: {
+      if(sql_node.drop_table.relation_name.empty()) {
+          LOG_WARN("Drop table operation failed: No table name provided.");
+          return RC::INVALID_ARGUMENT; // or another appropriate return code indicating failure
+      }
+
+      RC rc = DefaultHandler::get_default().drop_table(db->name(), sql_node.drop_table.relation_name.c_str());
+      if (rc != RC::SUCCESS) {
+          LOG_WARN("Failed to drop table: %s", sql_node.drop_table.relation_name.c_str());
+          return rc; // Return the error code from the drop table attempt
+      }
+      return RC::SUCCESS;
     }
 
     case SCF_SHOW_TABLES: {

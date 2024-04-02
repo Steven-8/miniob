@@ -28,6 +28,10 @@ See the Mulan PSL v2 for more details. */
 #include "storage/index/index.h"
 #include "storage/index/bplus_tree_index.h"
 #include "storage/trx/trx.h"
+#include <filesystem>
+#include "common/log/log.h"
+
+namespace fs = std::filesystem;
 
 Table::~Table()
 {
@@ -280,30 +284,37 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
   for (int i = 0; i < value_num; i++) {
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value &value = values[i];
-    if (field->type() != value.attr_type()) {
-      LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
-                table_meta_.name(), field->name(), field->type(), value.attr_type());
-      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    if(value.attr_type() != NULLTYPE){
+      if (field->type() != value.attr_type()) {
+        LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
+                  table_meta_.name(), field->name(), field->type(), value.attr_type());
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
     }
   }
-
+  int bitmap_size = (value_num + 7) / 8; // Calculate bitmap size needed to represent all fields
   // 复制所有字段的值
   int record_size = table_meta_.record_size();
   char *record_data = (char *)malloc(record_size);
+  memset(record_data, 0, bitmap_size);
 
   for (int i = 0; i < value_num; i++) {
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value &value = values[i];
     size_t copy_len = field->len();
+    if (value.is_null()) {
+      int byte_index = i / 8;
+      int bit_index = i % 8;
+      record_data[byte_index] |= (1 << bit_index); // Set the bit at the correct position to indicate null
+    }
     if (field->type() == CHARS) {
       const size_t data_len = value.length();
       if (copy_len > data_len) {
         copy_len = data_len + 1;
       }
     }
-    memcpy(record_data + field->offset(), value.data(), copy_len);
+    memcpy(record_data + bitmap_size + field->offset(), value.data(), copy_len);
   }
-
   record.set_data_owner(record_data, record_size);
   return RC::SUCCESS;
 }
@@ -491,6 +502,44 @@ Index *Table::find_index_by_field(const char *field_name) const
     return this->find_index(index_meta->name());
   }
   return nullptr;
+}
+
+RC Table::destroy(const char* dir) {
+    RC rc = sync(); // Flush all dirty pages
+
+    if(rc != RC::SUCCESS) {
+        return rc;
+    }
+
+    // Use the helper function for meta file path
+    std::string path = table_meta_file(dir, name());
+    // Utilize filesystem remove operation for better error handling
+    if (!fs::remove(path)) {
+        LOG_ERROR("Failed to remove meta file=%s, errno=%d", path.c_str(), errno);
+        return RC::GENERIC_ERROR;
+    }
+
+    // Use the helper function for data file path
+    std::string data_file = table_data_file(dir, name());
+    if (!fs::remove(data_file)) {
+        LOG_ERROR("Failed to remove data file=%s, errno=%d", data_file.c_str(), errno);
+        return RC::GENERIC_ERROR;
+    }
+
+    const int index_num = table_meta_.index_num();
+    for (int i = 0; i < index_num; i++) { 
+        // Assuming indexes_[i] is a type that has a close method
+        ((BplusTreeIndex*)indexes_[i])->close();
+        const IndexMeta* index_meta = table_meta_.index(i);
+
+        // Use the helper function for index file path
+        std::string index_file = table_index_file(dir, name(), index_meta->name());
+        if (!fs::remove(index_file)) {
+            LOG_ERROR("Failed to remove index file=%s, errno=%d", index_file.c_str(), errno);
+            return RC::GENERIC_ERROR;
+        }
+    }
+    return RC::SUCCESS;
 }
 
 RC Table::sync()

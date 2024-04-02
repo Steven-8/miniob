@@ -173,8 +173,18 @@ public:
 
     FieldExpr *field_expr = speces_[index];
     const FieldMeta *field_meta = field_expr->field().meta();
+    // Extracting bitmap information
+    int bitmap_size = (speces_.size() + 7) / 8;
+    const char *record_data = this->record_->data();
+    char bitmap_byte = record_data[index / 8];
+    // Checking if the value is null using the bitmap
+    bool is_null = (bitmap_byte >> (index % 8)) & 1;
+    if (is_null) {
+      cell.set_null(); // Set the value to null if the bitmap indicates null
+      return RC::SUCCESS;
+    }
     cell.set_type(field_meta->type());
-    cell.set_data(this->record_->data() + field_meta->offset(), field_meta->len());
+    cell.set_data(record_data + bitmap_size + field_meta->offset(), field_meta->len());
     return RC::SUCCESS;
   }
 
