@@ -100,6 +100,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         LE
         GE
         NE
+        INNER
+        JOIN
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 %union {
@@ -119,6 +121,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   char *                            string;
   int                               number;
   float                             floats;
+  JoinSqlNode *                     join_node;
+  std::vector<JoinSqlNode> *        join_list;
 }
 
 %token <number> NUMBER
@@ -169,6 +173,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <sql_node>            command_wrapper
 // commands should be a list but I use a single command instead
 %type <sql_node>            commands
+%type <join_node>           join_node
+%type <join_list>           join_list
 
 %left '+' '-'
 %left '*' '/'
@@ -468,7 +474,7 @@ update_stmt:      /*  update 语句的语法解析树*/
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list where
+    SELECT select_attr FROM ID rel_list join_list where
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
@@ -483,11 +489,41 @@ select_stmt:        /*  select 语句的语法解析树*/
       std::reverse($$->selection.relations.begin(), $$->selection.relations.end());
 
       if ($6 != nullptr) {
-        $$->selection.conditions.swap(*$6);
+        $$->selection.joinctions.swap(*$6);
         delete $6;
+      }
+      if ($7 != nullptr) {
+        $$->selection.conditions.swap(*$7);
+        delete $7;
       }
       free($4);
     }
+  join_node:
+    INNER JOIN rel_attr ON condition_list
+    {
+      $$ = new JoinSqlNode{$3->attribute_name,*$5};
+      delete $3;
+      delete $5;
+    }
+    ;
+
+join_list:
+       /* empty */
+    {
+      $$ = nullptr;
+    }
+    | join_node
+    {
+      $$ = new std::vector<JoinSqlNode>{*$1};
+      delete $1;   
+    }
+    | join_list join_node
+    {
+      $$->emplace_back(*$2);
+      delete $2;
+
+    }
+    ;
     ;
 calc_stmt:
     CALC expression_list
