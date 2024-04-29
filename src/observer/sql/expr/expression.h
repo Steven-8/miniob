@@ -220,7 +220,7 @@ public:
    * @param value the result of comparison
    */
   RC compare_value(const Value &left, const Value &right, bool &value) const;
-
+  RC like_operation(const Value &left, const Value &right, bool &value, bool do_like) const;
 private:
   CompOp comp_;
   std::unique_ptr<Expression> left_;

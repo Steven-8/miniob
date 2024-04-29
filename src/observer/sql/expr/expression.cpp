@@ -14,7 +14,9 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/expr/expression.h"
 #include "sql/expr/tuple.h"
-
+#include "sql/parser/parse_defs.h"
+#include "sql/parser/value.h"
+#include <regex>
 using namespace std;
 
 RC FieldExpr::get_value(const Tuple &tuple, Value &value) const
@@ -89,6 +91,9 @@ ComparisonExpr::~ComparisonExpr()
 RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &result) const
 {
   RC rc = RC::SUCCESS;
+  if (comp_ == CompOp::LIKE_OP || comp_ == CompOp::NOT_LIKE_OP){
+    return like_operation(left, right, result, comp_ == CompOp::LIKE_OP);
+  }
   int cmp_result = left.compare(right);
   result = false;
   switch (comp_) {
@@ -118,7 +123,37 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
 
   return rc;
 }
+RC ComparisonExpr::like_operation(const Value &left, const  Value &right, bool &result, bool do_like) const
+{
+  auto rc = RC::SUCCESS;
+  if (left.attr_type() != right.attr_type() || left.attr_type() != AttrType::CHARS) {
+    LOG_WARN("Only char field can use the like operation");
+    return RC::INTERNAL;
+  }
+  std::regex  reg;
+  constexpr auto alias_of_single_char_wildcard = "[^']{1}";
+  constexpr auto alias_of_chars_wildcard = "[^']*";
+  std::string  pattern{};
 
+  for (char i: right.get_string()){
+    if(i == '_'){
+      pattern += alias_of_single_char_wildcard;
+    }else if (i == '%'){
+      pattern += alias_of_chars_wildcard;
+    }else{
+      pattern += i;
+    }
+  }
+  std::regex re(pattern);
+  auto str = left.get_string();
+
+  if(std::regex_match(str.begin(), str.end(), re)){
+    result = do_like == true;
+  }else{
+    result = do_like == false;
+  }
+  return rc;
+}
 RC ComparisonExpr::try_get_value(Value &cell) const
 {
   if (left_->type() == ExprType::VALUE && right_->type() == ExprType::VALUE) {
