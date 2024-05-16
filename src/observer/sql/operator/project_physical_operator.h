@@ -33,7 +33,7 @@ public:
     
   }
   void add_projection(const Table *table, const FieldMeta *field);
-
+  void add_projection(const Table *table, Field &field);
   PhysicalOperatorType type() const override
   {
     return PhysicalOperatorType::PROJECT;

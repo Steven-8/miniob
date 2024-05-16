@@ -104,6 +104,11 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         JOIN
         LIKE
         NOT
+        MAX
+        MIN
+        COUNT
+        AVG
+        SUM
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 %union {
   ParsedSqlNode *                   sql_node;
@@ -176,6 +181,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <sql_node>            commands
 %type <join_node>           join_node
 %type <join_list>           join_list
+%type <rel_attr>            aggr_attr
+%type<rel_attr_list>        aggr_list
 
 %left '+' '-'
 %left '*' '/'
@@ -595,6 +602,15 @@ select_attr:
       $$->emplace_back(*$1);
       delete $1;
     }
+    | aggr_attr aggr_list{
+      if ($2 != nullptr){
+        $$ = $2;
+      }else {
+        $$ = new std:: vector<RelAttrSqlNode>;
+      }
+      $$->emplace_back(*$1);
+      delete $1;
+    }
     ;
 
 rel_attr:
@@ -643,6 +659,47 @@ rel_list:
 
       $$->push_back($2);
       free($2);
+    }
+    ;
+  aggr_attr:
+       MIN LBRACE rel_attr RBRACE
+    {
+      $$ = $3;
+      $$->aggregation_type = AggregationType::MIN;
+    }
+    | MAX LBRACE rel_attr RBRACE
+    {
+      $$ = $3;
+      $$->aggregation_type = AggregationType::MAX;
+    }
+    | COUNT LBRACE rel_attr RBRACE 
+    {
+      $$ = $3;
+      $$->aggregation_type = AggregationType::COUNT;
+    }
+    | AVG LBRACE rel_attr RBRACE
+    {
+      $$ = $3;
+      $$->aggregation_type = AggregationType::AVG;
+    }
+    | SUM LBRACE rel_attr RBRACE
+    {
+      $$ = $3;
+      $$->aggregation_type = AggregationType::SUM;
+    }
+    ;
+  aggr_list: 
+    {
+      $$ = nullptr;
+    }
+    | COMMA aggr_attr aggr_list {
+      if ($3 != nullptr){
+        $$ =$3;
+      }else {
+        $$ = new std::vector<RelAttrSqlNode>;
+      }
+      $$->emplace_back(*$2);
+      delete $2;
     }
     ;
 where:

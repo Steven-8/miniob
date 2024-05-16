@@ -21,8 +21,8 @@ See the Mulan PSL v2 for more details. */
 #define EVENT_HISTORY "EventHistory"
 #define MAX_EVENT_HISTORY_NUM "MaxEventHistoryNum"
 
-#define COUNT "count"
-
+// #define COUNT "count"
+static constexpr auto COUNT = "count";
 #define THREAD_POOL_ID "ThreadId"
 
 #define NEXT_STAGES "NextStages"

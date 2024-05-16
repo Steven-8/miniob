@@ -434,3 +434,41 @@ private:
   Tuple *left_ = nullptr;
   Tuple *right_ = nullptr;
 };
+
+class AggregationTuple : public Tuple
+{
+public:
+  AggregationTuple()          = default;
+  virtual ~AggregationTuple() = default;
+
+  void set_cells(const std::vector<Value> &cells) { cells_ = cells; }
+
+  virtual int cell_num() const override { return static_cast<int>(cells_.size()); }
+
+  virtual RC cell_at(int index, Value &cell) const override
+  {
+    if (index < 0 || index >= cell_num()) {
+      return RC::NOTFOUND;
+    }
+
+    cell = cells_[index];
+    return RC::SUCCESS;
+  }
+
+  void add_cell_spec(const char *spec) { names_.push_back(spec); }
+
+  virtual RC find_cell(const TupleCellSpec &spec, Value &cell) const override
+  {
+    for (size_t i = 0; i < names_.size(); i++) {
+      if (names_[i] == std::string(spec.alias())) {
+        cell = cells_[i];
+        return RC::SUCCESS;
+      }
+    }
+    return RC::NOTFOUND;
+  }
+
+private:
+  std::vector<std::string> names_;
+  std::vector<Value>       cells_;
+};

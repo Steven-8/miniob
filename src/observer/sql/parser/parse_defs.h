@@ -25,7 +25,17 @@ class Expression;
 
 /**
  * @defgroup SQLParser SQL Parser 
- */
+ */     
+
+enum class AggregationType
+{
+  MAX,
+  MIN,
+  COUNT,
+  AVG,
+  SUM,
+  NONE
+};
 
 /**
  * @brief 描述一个属性
@@ -38,6 +48,7 @@ struct RelAttrSqlNode
 {
   std::string relation_name;   ///< relation name (may be NULL) 表名
   std::string attribute_name;  ///< attribute name              属性名
+  AggregationType aggregation_type = AggregationType::NONE;  //聚合函数类型，默认为无
 };
 
 /**
@@ -77,6 +88,7 @@ struct ConditionSqlNode
   RelAttrSqlNode  right_attr;      ///< right-hand side attribute if right_is_attr = TRUE 右边的属性
   Value           right_value;     ///< right-hand side value if right_is_attr = FALSE
 };
+
 
 /**
  * @brief 描述一个select语句
