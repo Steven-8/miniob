@@ -13,7 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "storage/trx/vacuous_trx.h"
-
+#include "storage/record/record.h"
 using namespace std;
 
 RC VacuousTrxKit::init()
@@ -65,7 +65,10 @@ RC VacuousTrx::visit_record(Table *table, Record &record, bool readonly)
 {
   return RC::SUCCESS;
 }
-
+RC VacuousTrx::update_record(Table *table, Record &old_record, Record &new_record)
+{
+  return table->update_record(old_record, new_record);
+}
 RC VacuousTrx::start_if_need()
 {
   return RC::SUCCESS;

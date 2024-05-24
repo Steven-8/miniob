@@ -559,3 +559,14 @@ RC Table::sync()
   LOG_INFO("Sync table over. table=%s", name());
   return rc;
 }
+
+RC Table::update_record(Record &old_record, Record &new_record)
+{
+  delete_record(old_record);
+  auto rc = insert_record(new_record);
+  if (rc != RC::SUCCESS) {
+    delete_record(new_record);
+    insert_record(old_record);
+  }
+  return rc;
+}

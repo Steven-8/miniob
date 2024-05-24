@@ -20,6 +20,7 @@ See the Mulan PSL v2 for more details. */
 #include <utility>
 
 #include "sql/parser/parse.h"
+#include "storage/record/record.h"
 #include "storage/record/record_manager.h"
 #include "storage/field/field_meta.h"
 #include "storage/table/table.h"
@@ -34,6 +35,7 @@ class Db;
 class CLogManager;
 class CLogRecord;
 class Trx;
+class Index;
 
 /**
  * @brief 描述一个操作，比如插入、删除行等
@@ -147,6 +149,8 @@ public:
   virtual RC insert_record(Table *table, Record &record) = 0;
   virtual RC delete_record(Table *table, Record &record) = 0;
   virtual RC visit_record(Table *table, Record &record, bool readonly) = 0;
+  virtual RC update_record(Table *table, Record &old_record, Record &new_record) = 0;
+
 
   virtual RC start_if_need() = 0;
   virtual RC commit() = 0;

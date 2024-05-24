@@ -464,3 +464,7 @@ RC MvccTrx::redo(Db *db, const CLogRecord &log_record)
 
   return RC::SUCCESS;
 }
+RC MvccTrx::update_record(Table *table, Record &old_record, Record &new_record)
+{
+  return table->update_record(old_record, new_record);
+}

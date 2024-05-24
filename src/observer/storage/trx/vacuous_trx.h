@@ -15,7 +15,7 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include "storage/trx/trx.h"
-
+#include "storage/record/record.h"
 /**
  * @brief Vacuous(真空的)，顾名思义就是没有实现事务功能
  */
@@ -44,6 +44,7 @@ public:
   RC insert_record(Table *table, Record &record) override;
   RC delete_record(Table *table, Record &record) override;
   RC visit_record(Table *table, Record &record, bool readonly) override;
+  RC update_record(Table *table, Record &old_record, Record &new_record) override;
   RC start_if_need() override;
   RC commit() override;
   RC rollback() override;
